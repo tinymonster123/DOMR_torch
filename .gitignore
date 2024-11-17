@@ -1,8 +1,6 @@
 # DOMR# 忽略 Python 虚拟环境目录
 venv/
 
-# 忽略数据目录
-data/
 
 # 忽略编译生成的文件
 __pycache__/
