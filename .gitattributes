@@ -1,1 +1,2 @@
 data/raw/* filter=lfs diff=lfs merge=lfs -text
+*DOMR_Toward_Deep_Open-World_Malware_Recognition.txt filter=lfs diff=lfs merge=lfs -text
