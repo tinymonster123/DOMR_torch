@@ -1,3 +1,0 @@
-[submodule "data/raw"]
-	path = data/raw
-	url = git@github.com:tinymonster123/DOMR_torch_data.git
