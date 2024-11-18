@@ -12,8 +12,8 @@ from utils.feature_extraction import extract_features
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    raw_data_dir = '/root/DOMR_torch/data/raw'
-    processed_data_dir = '/root/DOMR_torch/data/processed'
+    raw_data_dir = 'data/raw'
+    processed_data_dir = 'data/processed'
     file_name = 'cicmaldroid2020.csv'
 
     batch_size = 32
@@ -36,21 +36,21 @@ def main():
 
     maml_model = MAML(feature_extractor, inner_lr=inner_lr, outer_lr=outer_lr, inner_steps=inner_steps, device=device)
     train_maml_model(maml_model, episodes, num_iterations=meta_iterations)
-    torch.save(feature_extractor.state_dict(), '/root/DOMR_torch/src/models/feature_extractor.pth')
+    torch.save(feature_extractor.state_dict(), 'src/models/feature_extractor.pth')
 
-    feature_extractor.load_state_dict(torch.load('/root/DOMR_torch/src/models/feature_extractor.pth',weights_only=True))
+    feature_extractor.load_state_dict(torch.load('src/models/feature_extractor.pth',weights_only=True))
     feature_extractor.eval()
 
     train_features, train_labels = extract_features(feature_extractor, train_loader, device)
-    torch.save((train_features, train_labels), '/root/DOMR_torch/data/processed/train_features.pth')
+    torch.save((train_features, train_labels), 'data/processed/train_features.pth')
 
     test_features, test_labels = extract_features(feature_extractor, test_loader, device)
-    torch.save((test_features, test_labels), '/root/DOMR_torch/data/processed/test_features.pth')
+    torch.save((test_features, test_labels), '/data/processed/test_features.pth')
 
     num_classes = len(set(y_train))
     classifier = Classifier(input_dim=feature_dim, num_classes=num_classes).to(device)
     train_classifier(classifier, train_features.numpy(), train_labels.numpy(), device, epochs=classifier_epochs)
-    torch.save(classifier.state_dict(), '/root/DOMR_torch/src/models/classifier.pth')
+    torch.save(classifier.state_dict(), 'src/models/classifier.pth')
 
     evaluate_model(classifier, test_features, test_labels, device)
 
@@ -69,7 +69,7 @@ def main():
         title='Comparison of WAF Performance of DOMR vs EVM under Different New Family Counts',
         xlabel='New Family Count',
         ylabel='WAF Performance',
-        save_path='/root/DOMR_torch/experiments/plots/experiment_waf_bar_chart.png'
+        save_path='experiments/plots/experiment_waf_bar_chart.png'
     )
 
     plot_bar_charts(
@@ -80,7 +80,7 @@ def main():
         title='Comparison of MAF Performance of DOMR vs EVM under Different New Family Counts',
         xlabel='New Family Count',
         ylabel='MAF Performance',
-        save_path='/root/DOMR_torch/experiments/plots/experiment_maf_bar_chart.png'
+        save_path='/experiments/plots/experiment_maf_bar_chart.png'
     )
 
     parameter_data = pd.DataFrame({
@@ -97,7 +97,7 @@ def main():
         title='Comparison of MAF Performance under Different λ1 and λ2 Values',
         xlabel='λ1',
         ylabel='λ2',
-        save_path='/root/DOMR_torch/experiments/plots/parameter_heatmap.png'
+        save_path='/experiments/plots/parameter_heatmap.png'
     )
 
     sample_ratio_data = pd.DataFrame({
@@ -115,7 +115,7 @@ def main():
         xlabel='NETWORK_ACCESS____',
         ylabel1='Known Family Classification MAF',
         ylabel2='Open Recognition MAF',
-        save_path='/root/DOMR_torch/experiments/plots/sample_ratio_line_chart.png'
+        save_path='experiments/plots/sample_ratio_line_chart.png'
     )
 
 
