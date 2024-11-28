@@ -36,7 +36,7 @@ class Representation(nn.Module):
         x = self.conv_net(x)
         x = x.view(x.size(0), -1) # 将多维张量展平为一维张量
         x = self.fully_connected(x)
-        return x # 返回的为输入数据提取的结果
+        return x # 返回的模型输出结果，是一个对数概率
     
     # 使用给定的参数进行前向传播，用于元学习中的快速权重更新
     def get_feature_params(self,x,params):
@@ -53,7 +53,7 @@ class Representation(nn.Module):
         x = F.tanh(x)
         
         x = x.view(x.size(0), -1)
-        return x
+        return x # 返回的是卷积层提取的特征向量
         
 
     # 使用给定的参数进行前向传播，使用于元学习中的快速权重更新
@@ -65,7 +65,7 @@ class Representation(nn.Module):
         x = F.tanh(x)
         x = F.linear(x,params['fully_connected.2.weight'],params['fully_connected.2.bias'])
         x = F.log_softmax(x,dim=-1)
-        return x
+        return x #
         
         
 # 定义中心损失函数
