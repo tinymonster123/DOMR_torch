@@ -1,26 +1,66 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
+import torch.nn.functional as F
+from collections import OrderedDict # 有序字典，用于按插入顺序存储字典
 
+# The representation network is built on the classic convolutional neural network (CNN) LeNet5 .
+# 使用 CNN LeNet5 搭建一个 Representation NetWork
 class Representation(nn.Module):
-    def __init__(self, input_dim, hidden_dim, feature_dim):
+    def __init__(self):
         super(Representation, self).__init__()
-        self.layer1 = nn.Linear(input_dim,hidden_dim)
-        self.relu = nn.ReLU()
-        self.layer2 = nn.Linear(hidden_dim,feature_dim)
+        
+        # 将多个层组合成一个顺序容器
+        self.conv_net = nn.Sequential(OrderedDict([              
+            ('C1', nn.Conv2d(1, 6, kernel_size=(5, 5))),
+            ('Tanh1', nn.Tanh()), # 每个 Tanh 激活函数都是为了增加模型的非线性，用于帮助模型捕捉输入数据的复杂性
+            ('S2', nn.AvgPool2d(kernel_size=(2, 2), stride=2)),
+            
+            ('C3', nn.Conv2d(6, 16, kernel_size=(5, 5))),
+            ('Tanh3', nn.Tanh()),
+            ('S4', nn.AvgPool2d(kernel_size=(2, 2), stride=2)),
+            
+            ('C5', nn.Conv2d(16, 120, kernel_size=(5, 5))),
+            ('Tanh5', nn.Tanh()),
+        ]))
+        
+        # 定义全连接层
+        self.fully_connected = nn.Sequential(OrderedDict([
+            ('F6', nn.Linear(120, 84)),
+            ('Tanh6', nn.Tanh()),
+            ('F7', nn.Linear(84, 10)),
+            ('LogSoftmax', nn.LogSoftmax(dim=-1)) # 表示在最后一个维度进行 softmax
+        ]))
+
         
     def forward(self, x):
-        x = self.layer1(x)
-        x = self.relu(x)
-        x = self.layer2(x)
+        x = self.conv_net(x)
+        x = x.view(x.size(0), -1) # 将多维张量展平为一维张量
+        x = self.fully_connected(x)
         return x
 
-    def functional_forward(self,x,params):
-        x = nn.functional.linear(x,params[0],params[1])
-        x = nn.functional.relu(x)
-        x = nn.functional.linear(x,params[2],params[3])
-        return x
-
+    # 使用给定的参数进行前向传播，使用于元学习中的快速权重更新
+    # def functional_forward(self,x,params):
+    #     x = F.conv2d(x,params['conv_net.0.weight'],params['conv_net.0.bias'])
+    #     x = F.tanh(x)
+    #     x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
+        
+    #     x = F.conv2d(x,params['conv_net.3.weight'],params['conv_net.3.bias'])
+    #     x = F.tanh(x)
+    #     x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
+        
+    #     x = F.conv2d(x,params['conv_net.6.weight'],params['conv_net.6.bias'])
+    #     x = F.tanh(x)
+        
+    #     x = x.view(x.size(0), -1)
+        
+    #     x = F.linear(x,params['fully_connected.0.weight'],params['fully_connected.0.bias'])
+    #     x = F.tanh(x)
+    #     x = F.linear(x,params['fully_connected.2.weight'],params['fully_connected.2.bias'])
+    #     x = F.log_softmax(x,dim=-1)
+    #     return x
+        
+        
+# 定义中心损失函数
 def center_distance_loss(features, labels):
     unique_labels = torch.unique(labels)
     loss = 0.0
@@ -31,30 +71,4 @@ def center_distance_loss(features, labels):
         loss += intra_class_loss
     return loss / len(unique_labels)
 
-def meta_train(feature_extractor, episodes, inner_lr, outer_lr, inner_steps, iterations, device):
-    feature_extractor.to(device)
-    optimizer = torch.optim.Adam(feature_extractor.parameters(), lr=outer_lr)
 
-    for iteration in range(iterations):
-        total_loss = 0.0
-        for episode in episodes:
-            support_set, support_labels, query_set, query_labels = episode
-            support_set, support_labels = support_set.to(device), support_labels.to(device)
-            query_set, query_labels = query_set.to(device), query_labels.to(device)
-
-            fast_weights = list(feature_extractor.parameters())
-            for _ in range(inner_steps):
-                support_features = feature_extractor(support_set)
-                loss = center_distance_loss(support_features, support_labels)
-                grads = torch.autograd.grad(loss, fast_weights, create_graph=True)
-                fast_weights = [w - inner_lr * g for w, g in zip(fast_weights, grads)]
-
-            query_features = feature_extractor(query_set)
-            query_loss = center_distance_loss(query_features, query_labels)
-            optimizer.zero_grad()
-            query_loss.backward()
-            optimizer.step()
-
-            total_loss += query_loss.item()
-        average_loss = total_loss / len(episodes)
-        print(f"Iteration [{iteration+1}/{iterations}], Loss: {average_loss:.4f}")
