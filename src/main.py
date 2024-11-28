@@ -5,7 +5,6 @@ from models.representation import Representation
 from models.meta_learning import MAML, train_maml_model
 from models.classifier import Classifier, train_classifier
 from utils.evaluation import evaluate_model
-from utils.visualization import plot_bar_charts, plot_line_charts, plot_heatmap, plot_sample_ratio_line_chart
 from utils.feature_extraction import extract_features
 
 
@@ -22,8 +21,9 @@ def main():
     inner_steps = 5
     meta_iterations = 10
     classifier_epochs = 10
+    N = 7
 
-    X_train, X_test, y_train, y_test = load_processed_data(file_name, raw_data_dir, processed_data_dir)
+    X_train, X_test, y_train, y_test,known_classes = load_processed_data(file_name, raw_data_dir, processed_data_dir,N)
 
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size=batch_size)
 
@@ -53,70 +53,6 @@ def main():
     torch.save(classifier.state_dict(), 'src/models/classifier.pth')
 
     evaluate_model(classifier, test_features, test_labels, device)
-
-    experiment_data = pd.DataFrame({
-        'New Family Count': [1, 1, 2, 2, 3, 3],
-        'Method': ['DOMR', 'EVM', 'DOMR', 'EVM', 'DOMR', 'EVM'],
-        'WAF': [75, 70, 80, 72, 85, 78],
-        'MAF': [70, 68, 75, 70, 80, 74]
-    })
-
-    plot_bar_charts(
-        data=experiment_data,
-        x='New Family Count',
-        y='WAF',
-        hue='Method',
-        title='Comparison of WAF Performance of DOMR vs EVM under Different New Family Counts',
-        xlabel='New Family Count',
-        ylabel='WAF Performance',
-        save_path='experiments/plots/experiment_waf_bar_chart.png'
-    )
-
-    plot_bar_charts(
-        data=experiment_data,
-        x='New Family Count',
-        y='MAF',
-        hue='Method',
-        title='Comparison of MAF Performance of DOMR vs EVM under Different New Family Counts',
-        xlabel='New Family Count',
-        ylabel='MAF Performance',
-        save_path='/experiments/plots/experiment_maf_bar_chart.png'
-    )
-
-    parameter_data = pd.DataFrame({
-        'λ1': [0.1, 0.1, 0.2, 0.2],
-        'λ2': [0.01, 0.02, 0.01, 0.02],
-        'MAF': [75.5, 76.0, 78.2, 79.1]
-    })
-
-    plot_heatmap(
-        data=parameter_data,
-        x='λ1',
-        y='λ2',
-        z='MAF',
-        title='Comparison of MAF Performance under Different λ1 and λ2 Values',
-        xlabel='λ1',
-        ylabel='λ2',
-        save_path='/experiments/plots/parameter_heatmap.png'
-    )
-
-    sample_ratio_data = pd.DataFrame({
-        'NETWORK_ACCESS____': [0.1, 0.2, 0.3, 0.4, 0.5],
-        'Known Family Classification MAF': [70.2, 72.5, 75.0, 77.3, 78.9],
-        'Open Recognition MAF': [65.4, 67.8, 70.1, 72.5, 74.0]
-    })
-
-    plot_sample_ratio_line_chart(
-        data=sample_ratio_data,
-        x='NETWORK_ACCESS____',
-        y1='Known Family Classification MAF',
-        y2='Open Recognition MAF',
-        title='Comparison of MAF Performance under Different Sample Ratios',
-        xlabel='NETWORK_ACCESS____',
-        ylabel1='Known Family Classification MAF',
-        ylabel2='Open Recognition MAF',
-        save_path='experiments/plots/sample_ratio_line_chart.png'
-    )
 
 
 if __name__ == '__main__':
