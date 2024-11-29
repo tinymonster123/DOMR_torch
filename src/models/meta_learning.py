@@ -78,23 +78,61 @@ class MAML(nn.Module):
             
             return fast_weights
     
-    # 定义外部更新函数 对应 MAML 算法中的外部优化器    
-    def outer_update(self,support_set,support_labels,query_set,query_labels):
-            criterion = nn.CrossEntropyLoss()
-            self.outer_optimizer.zero_grad()
-            fast_weights = self.inner_update(support_set,support_labels)
-            query_set,query_labels = query_set.to(self.device),query_labels.to(self.device)
-            output = self.model.functional_forward(query_set, fast_weights)
-            loss = criterion(output, query_labels)
-            loss.backward()
-            self.outer_optimizer.step()
-            return loss.item()
+    # 定义外部更新函数 对应 MAML 算法中的外部优化器 
+    # 将 outer_update 函数进行修改 直接在内部进行多个 episode 的训练 以及区分对已知类别和未知类别的操作
+    '''
+    输入 batch_episodes : 为含有一个 batch 的 episode 数据
+    输入 known_classes : 为已知类别数据
+    在外部优化器中针对的数据集为查询集
+    '''
+    def outer_update(self,batch_episodes,known_classes):
+        total_loss = 0.0
+        self.outer_optimizer.zero_grad()
         
-    def meta_train(self, episodes):
-            for episode in episodes:
-                support_set, query_set, support_labels, query_labels = episode
-                # fast_weights = self.inner_update(support_set,support_labels)
-                loss = self.outer_update(support_set, support_labels, query_set, query_labels)
+        for episode in batch_episodes:
+            support_set, query_set, support_labels, query_labels = episode
+            fast_weights = self.inner_update(support_set,support_labels,known_classes)
+            
+            # 外部优化器中需要计算已知类别和未知类别的损失
+            query_set,query_labels = query_set.to(self.device),query_labels.to(self.device)
+            
+            # 获得查询集的输出结果
+            output = self.model.functional_forward(query_set,fast_weights) # 使用的是为 log_softmax 输出
+            output_odds = torch.exp(output) # log_softmax 输出转换为 softmax 输出
+            
+            known_index = [i for i,label in enumerate(query_labels) if label in known_classes] # 已知类别的索引
+            unknown_index = [i for i,label in enumerate(query_labels) if label not in known_classes] # 未知类别的索引
+            
+            if known_classes:
+                output_known = output[known_index]
+                query_labels_known = query_labels[known_index]
+                loss_lk = nn.CrossEntropyLoss(output_known, query_labels_known)
+            else:
+                loss_lk = 0.0
+                
+            # 此步骤是计算未知类别的输出在已知类别上的概率分布的熵，从而来帮助模型在未知概率上进行低概率的输出来增强模型拒绝未知类别的能力
+            if unknown_index:
+                unknown_odds = output_odds[unknown_index]
+                # 
+                known_odds = unknown_odds[:,:len(known_classes)]
+                
+                loss_lu = -torch.sum(known_odds * torch.log(known_odds + 1e-10),dim=1).mean()
+            else:
+                loss_lu = 0.0
+                
+            total_loss += loss_lk + loss_lu
+                
+        loss_average = total_loss / len(batch_episodes)
+        
+        # 对平均损失进行反向传播，以更新模型参数
+        loss_average.backward()
+        self.outer_optimizer.step()
+        
+        return loss_average.item()        
+        
+    # 定义元训练，使用外部更新函数进行多次迭代
+    def meta_train(self, episodes,known_classes):
+            loss = self.outer_update(episodes,known_classes)
             return loss
         
 def train_maml_model(model,episodes,num_iterations):
@@ -102,33 +140,3 @@ def train_maml_model(model,episodes,num_iterations):
         loss = model.meta_train(episodes)
         print(f'iteration: {iteration+1}/{num_iterations}, loss: {loss}')
         
-
-    
-    
-def meta_train(feature_extractor, episodes, inner_lr, outer_lr, inner_steps, iterations, device):
-    feature_extractor.to(device)
-    optimizer = torch.optim.Adam(feature_extractor.parameters(), lr=outer_lr)
-
-    for iteration in range(iterations):
-        total_loss = 0.0
-        for episode in episodes:
-            support_set, support_labels, query_set, query_labels = episode
-            support_set, support_labels = support_set.to(device), support_labels.to(device)
-            query_set, query_labels = query_set.to(device), query_labels.to(device)
-
-            fast_weights = list(feature_extractor.parameters())
-            for _ in range(inner_steps):
-                support_features = feature_extractor(support_set)
-                loss = center_distance_loss(support_features, support_labels)
-                grads = torch.autograd.grad(loss, fast_weights, create_graph=True)
-                fast_weights = [w - inner_lr * g for w, g in zip(fast_weights, grads)]
-
-            query_features = feature_extractor(query_set)
-            query_loss = center_distance_loss(query_features, query_labels)
-            optimizer.zero_grad()
-            query_loss.backward()
-            optimizer.step()
-
-            total_loss += query_loss.item()
-        average_loss = total_loss / len(episodes)
-        print(f"Iteration [{iteration+1}/{iterations}], Loss: {average_loss:.4f}")
