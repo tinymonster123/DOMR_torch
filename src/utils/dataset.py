@@ -34,8 +34,17 @@ def split_data(x,y,N,test_size = 1/6):
     x_unknown = x[unknown_mask]
     y_unknown = y[unknown_mask]
     
-    # 根据论文的比例来对已知类别数据进行分类为——训练集和测试集
-    x_train, x_test, y_train, y_test = train_test_split(x_known, y_known, test_size=test_size, random_state=42, stratify=y_known)
+   # 将未知类别的标签统一设置为 num_classes
+    unknown_label = len(known_classes)
+    y_unknown = pd.Series([unknown_label] * len(y_unknown), index=y_unknown.index)
+
+    # 对已知类别的标签进行编码（从 0 到 N-1）
+    y_known = y_known.replace(dict(zip(known_classes, range(len(known_classes)))))
+
+    # 按照一定比例划分已知类别的数据 并且训练集只包含已知类别 未知类别用于加入测试集
+    x_train, x_test, y_train, y_test = train_test_split(
+        x_known, y_known, test_size=test_size, stratify=y_known, random_state=42
+    )
     
     # 将未知类别数据添加到测试集中
     x_test = pd.concat([x_test, x_unknown])
