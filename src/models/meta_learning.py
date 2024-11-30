@@ -33,7 +33,7 @@ class MAML(nn.Module):
             old_index = [i for i,label in enumerate(support_labels) if label in known_classes] # 旧类别的索引    
                    
             # 对模型参数进行复制 用于内部更新参数不影响全局参数 以初始化快速权重
-            fast_weights = [p.clone() for p in self.model.parameters()]
+            fast_weights = {name: param.clone() for name, param in self.model.named_parameters()}
             
             support_set,support_labels = support_set.to(self.device),support_labels.to(self.device) # 将支持集和标签移动到指定设备
             
@@ -73,9 +73,9 @@ class MAML(nn.Module):
                 loss = lambda1 * loss_l1 + lambda2 * loss_l2 + loss_l3
                 
                 # 使用自动微分来进行梯度计算，用来进行快速权重更新
-                grads = torch.autograd.grad(loss, fast_weights, create_graph=True, allow_unused=True)
-                fast_weights = [w - self.inner_lr * g if g is not None else w for w, g in zip(fast_weights, grads)]
-            
+                grads = torch.autograd.grad(loss, fast_weights.values(), create_graph=True, allow_unused=True)
+                fast_weights = {name: param - self.inner_lr * grad if grad is not None else param
+                            for (name, param), grad in zip(fast_weights.items(), grads)}
             return fast_weights
     
     # 定义外部更新函数 对应 MAML 算法中的外部优化器 
