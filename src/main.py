@@ -34,8 +34,6 @@ def main():
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size=batch_size)
     
     # 创建特征提取器
-    input_dim = X_train.shape[1]
-    hidden_dim = 256
     feature_dim = 128
     feature_extractor = Representation().to(device)
     

@@ -10,6 +10,7 @@ class Representation(nn.Module):
         super(Representation, self).__init__()
         
         # 将多个层组合成一个顺序容器
+        # conv2d 输入参数需要为 3D 或者为 4D 张量
         self.conv_net = nn.Sequential(OrderedDict([              
             ('C1', nn.Conv2d(1, 6, kernel_size=(5, 5))),
             ('Tanh1', nn.Tanh()), # 每个 Tanh 激活函数都是为了增加模型的非线性，用于帮助模型捕捉输入数据的复杂性
@@ -41,15 +42,15 @@ class Representation(nn.Module):
     # 使用给定的参数进行前向传播，用于元学习中的快速权重更新
     def get_feature_params(self,x,params):
         
-        x = F.conv2d(x,params['conv_net.0.weight'],params['conv_net.0.bias'])
+        x = F.conv2d(x,params['conv_net.C1.weight'],params['conv_net.C1.bias'])
         x = F.tanh(x)
         x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
         
-        x = F.conv2d(x,params['conv_net.3.weight'],params['conv_net.3.bias'])
+        x = F.conv2d(x,params['conv_net.C3.weight'],params['conv_net.C3.bias'])
         x = F.tanh(x)
         x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
         
-        x = F.conv2d(x,params['conv_net.6.weight'],params['conv_net.6.bias'])
+        x = F.conv2d(x,params['conv_net.C5.weight'],params['conv_net.C5.bias'])
         x = F.tanh(x)
         
         x = x.view(x.size(0), -1)
@@ -61,9 +62,9 @@ class Representation(nn.Module):
         
         x = self.get_feature_params(x,params)
         
-        x = F.linear(x,params['fully_connected.0.weight'],params['fully_connected.0.bias'])
+        x = F.linear(x,params['fully_connected.F6.weight'],params['fully_connected.F6.bias'])
         x = F.tanh(x)
-        x = F.linear(x,params['fully_connected.2.weight'],params['fully_connected.2.bias'])
+        x = F.linear(x,params['fully_connected.F7.weight'],params['fully_connected.F7.bias'])
         x = F.log_softmax(x,dim=-1)
         return x #
         

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader
+from models.reshape_data import ReshapeDataSet
 import torch
 
 # 加载原始数据集
@@ -81,10 +82,8 @@ def load_processed_data(file_name,raw_data_dir,processed_data_dir,N):
     return (x_train, x_test, y_train, y_test,known_classes)
 
 def create_dataloaders(X_train, y_train, X_test, y_test, batch_size):
-    train_dataset = TensorDataset(torch.tensor(X_train.values, dtype=torch.float32),
-                                  torch.tensor(y_train.values, dtype=torch.long))
-    test_dataset = TensorDataset(torch.tensor(X_test.values, dtype=torch.float32),
-                                 torch.tensor(y_test.values, dtype=torch.long))
+    train_dataset = ReshapeDataSet(X_train, y_train)
+    test_dataset = ReshapeDataSet(X_test, y_test)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size)
     return train_loader, test_loader
