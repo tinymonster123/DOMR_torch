@@ -43,21 +43,21 @@ def main():
     # 初始化 MAML 模型
     maml_model = MAML(feature_extractor, inner_lr=inner_lr, outer_lr=outer_lr, inner_steps=inner_steps, device=device)
     train_maml_model(maml_model, episodes, num_iterations=meta_iterations)
-    torch.save(feature_extractor.state_dict(), '/root/DOMR_torch/src/models/feature_extractor.pth')
+    torch.save(feature_extractor.state_dict(), '/root/DOMR_torch/experiment/logs/feature_extractor.pth')
 
-    feature_extractor.load_state_dict(torch.load('/root/DOMR_torch/src/models/feature_extractor.pth',weights_only=True))
+    feature_extractor.load_state_dict(torch.load('/root/DOMR_torch/experiment/logs/feature_extractor.pth',weights_only=True))
     feature_extractor.eval()
 
     train_features, train_labels = extract_features(feature_extractor, train_loader, device)
-    torch.save((train_features, train_labels), '/root/DOMR_torch/data/processed/train_features.pth')
+    torch.save((train_features, train_labels), '/root/DOMR_torch/experiment/logs/train_features.pth')
 
     test_features, test_labels = extract_features(feature_extractor, test_loader, device)
-    torch.save((test_features, test_labels), '/root/DOMR_torch/data/processed/test_features.pth')
+    torch.save((test_features, test_labels), '/root/DOMR_torch/experiment/logs/test_features.pth')
 
     num_classes = len(set(y_train))
     classifier = Classifier(input_dim=feature_dim, num_classes=num_classes).to(device)
     train_classifier(classifier, train_features.numpy(), train_labels.numpy(), device, epochs=classifier_epochs)
-    torch.save(classifier.state_dict(), '/root/DOMR_torch/src/models/classifier.pth')
+    torch.save(classifier.state_dict(), '/root/DOMR_torch/experiment/logs/classifier.pth')
 
        # 使用聚合策略进行预测
     preds = aggregation(classifier, feature_extractor, X_test, device, num_classes)

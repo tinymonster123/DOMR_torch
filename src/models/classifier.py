@@ -4,6 +4,7 @@ import torch.nn as nn
 class Classifier(nn.Module):
     def __init__(self, input_dim, num_classes):
         super(Classifier, self).__init__()
+        self.input_dim = input_dim
         self.num_classes = num_classes
         # 通过循环创建多个分类器，实现 one-vs-rest 分类器
         self.classifiers = nn.ModuleList([ # 包含多个二类分类器
@@ -16,8 +17,8 @@ class Classifier(nn.Module):
     def forward(self, x):
         outputs = []
         for classifier in self.classifiers:
-            outputs.append(classifier(x))
-        outputs = torch.stack(outputs, dim=1)
+            outputs.append(classifier(x).unsqueeze(1)) # 将输出结果添加到 outputs 列表中
+        outputs = torch.cat(outputs, dim=1) # 将 outputs 列表中的 tensor 按列拼接为一个 tensor
         return outputs
 
 def train_classifier(model, X_train, y_train, device, epochs):
