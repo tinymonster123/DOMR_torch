@@ -37,14 +37,14 @@ def main():
     input_dim = X_train.shape[1]
     hidden_dim = 256
     feature_dim = 128
-    feature_extractor = Representation(input_dim, hidden_dim, feature_dim).to(device)
+    feature_extractor = Representation().to(device)
     
     # 创建 Episodes
     episodes = create_episode(X_train, y_train, num_episode=100)
     
     # 初始化 MAML 模型
-    maml_model = MAML(feature_extractor, inner_lr=inner_lr, outer_lr=outer_lr, inner_steps=inner_steps, device=device)
-    train_maml_model(maml_model, episodes, num_iterations=meta_iterations)
+    maml_model = MAML( inner_lr, outer_lr, inner_steps, device)
+    train_maml_model(maml_model, episodes, num_iterations=meta_iterations,known_classes=known_classes)
     torch.save(feature_extractor.state_dict(), '/root/DOMR_torch/experiment/logs/feature_extractor.pth')
 
     feature_extractor.load_state_dict(torch.load('/root/DOMR_torch/experiment/logs/feature_extractor.pth',weights_only=True))

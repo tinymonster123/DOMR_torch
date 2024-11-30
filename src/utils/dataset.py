@@ -18,7 +18,7 @@ def preprocess_data(data):
 
 def find_known_class(N,y): # N 为已知类别的数量,且 N 的取值范围为 {7,9,11,13}
     unique_labels = y.unique()
-    known_classes = np.random.choice(unique_labels, N, replace=False)
+    known_classes = np.random.choice(unique_labels, N, replace=True)
     return known_classes # 返回 N 个已知类别 根据论文的说法作为已知类别的同时，也是旧类别
         
 

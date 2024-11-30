@@ -135,8 +135,8 @@ class MAML(nn.Module):
             loss = self.outer_update(episodes,known_classes)
             return loss
         
-def train_maml_model(model,episodes,num_iterations):
+def train_maml_model(model,episodes,num_iterations,known_classes):
     for iteration in range(num_iterations):
-        loss = model.meta_train(episodes)
+        loss = model.meta_train(episodes,known_classes)
         print(f'iteration: {iteration+1}/{num_iterations}, loss: {loss}')
         
