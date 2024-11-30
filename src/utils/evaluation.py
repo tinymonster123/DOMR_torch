@@ -12,7 +12,7 @@ def evaluate_model(preds,y_true):
     print(f"Macro F1 Score: {maf:.4f}")
     print(f"Weighted F1 Score: {waf:.4f}")
         
-    with open('/root/DOMR_torch/data/processed/evaluation_report.log','w') as f:
+    with open('/root/DOMR_torch/experiment/logs/evaluation_report.log','w') as f:
         f.write("Evaluation Report:\n")
         f.write(report)
         f.write(f"Macro F1 Score: {maf:.4f}\n")
