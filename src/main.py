@@ -1,6 +1,7 @@
 import torch
 import pandas as pd
 import numpy as np
+from utils.logger_config import logger
 from utils.dataset import load_processed_data, create_dataloaders, create_episode
 from models.representation import Representation
 from models.recognizer import aggregation
@@ -20,6 +21,7 @@ def main():
     file_name = 'cicmaldroid2020.csv'
 
     # 设置超参数
+    input_dim = 10
     batch_size = 32
     inner_lr = 0.01
     outer_lr = 0.001
@@ -34,7 +36,6 @@ def main():
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size=batch_size)
     
     # 创建特征提取器
-    feature_dim = 128
     feature_extractor = Representation().to(device)
     
     # 创建 Episodes
@@ -55,12 +56,12 @@ def main():
     torch.save((test_features, test_labels), '/root/DOMR_torch/experiment/logs/test_features.pth')
 
     num_classes = len(set(y_train))
-    classifier = Classifier(input_dim=feature_dim, num_classes=num_classes).to(device)
+    classifier = Classifier(input_dim=input_dim, num_classes=num_classes).to(device)
     train_classifier(classifier, train_features.numpy(), train_labels.numpy(), device, epochs=classifier_epochs)
     torch.save(classifier.state_dict(), '/root/DOMR_torch/experiment/logs/classifier.pth')
 
        # 使用聚合策略进行预测
-    preds = aggregation(classifier, feature_extractor, X_test, device, num_classes)
+    preds = aggregation( X_test, feature_extractor,classifier, device, num_classes)
 
     # 将 y_test 转换为 numpy 数组
     if isinstance(y_test, torch.Tensor):
@@ -80,7 +81,7 @@ def main():
 
     # 如果没有未知类别的样本，增量更新无法进行
     if len(X_new) == 0:
-        print("No unknown samples detected. Incremental update is not performed.")
+        logger.info("No unknown samples detected. Incremental update is not performed.")
         return
 
     # 重新编码新类别标签（假设新类别的标签从 num_classes 开始）

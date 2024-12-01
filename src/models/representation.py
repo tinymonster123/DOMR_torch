@@ -12,21 +12,21 @@ class Representation(nn.Module):
         # 将多个层组合成一个顺序容器
         # conv2d 输入参数需要为 3D 或者为 4D 张量
         self.conv_net = nn.Sequential(OrderedDict([              
-            ('C1', nn.Conv2d(1, 6, kernel_size=(5, 5))),
+            ('C1', nn.Conv2d(1, 6, kernel_size=(5, 5),padding=(2,2))),
             ('Tanh1', nn.Tanh()), # 每个 Tanh 激活函数都是为了增加模型的非线性，用于帮助模型捕捉输入数据的复杂性
             ('S2', nn.AvgPool2d(kernel_size=(2, 2), stride=2)),
             
-            ('C3', nn.Conv2d(6, 16, kernel_size=(5, 5))),
+            ('C3', nn.Conv2d(6, 16, kernel_size=(5, 5),padding=(2,2))),
             ('Tanh3', nn.Tanh()),
             ('S4', nn.AvgPool2d(kernel_size=(2, 2), stride=2)),
             
-            ('C5', nn.Conv2d(16, 120, kernel_size=(5, 5))),
-            ('Tanh5', nn.Tanh()),
+            # ('C5', nn.Conv2d(16, 120, kernel_size=(5, 5))),
+            # ('Tanh5', nn.Tanh()),
         ]))
         
         # 定义全连接层
         self.fully_connected = nn.Sequential(OrderedDict([
-            ('F6', nn.Linear(120, 84)),
+            ('F6', nn.Linear(352, 84)),
             ('Tanh6', nn.Tanh()),
             ('F7', nn.Linear(84, 10)),
             ('LogSoftmax', nn.LogSoftmax(dim=-1)) # 表示在最后一个维度进行 softmax
@@ -42,16 +42,16 @@ class Representation(nn.Module):
     # 使用给定的参数进行前向传播，用于元学习中的快速权重更新
     def get_feature_params(self,x,params):
         
-        x = F.conv2d(x,params['conv_net.C1.weight'],params['conv_net.C1.bias'])
+        x = F.conv2d(x,params['conv_net.C1.weight'],params['conv_net.C1.bias'],padding=(2,2))
         x = F.tanh(x)
         x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
         
-        x = F.conv2d(x,params['conv_net.C3.weight'],params['conv_net.C3.bias'])
+        x = F.conv2d(x,params['conv_net.C3.weight'],params['conv_net.C3.bias'],padding=(2,2))
         x = F.tanh(x)
         x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
         
-        x = F.conv2d(x,params['conv_net.C5.weight'],params['conv_net.C5.bias'])
-        x = F.tanh(x)
+        # x = F.conv2d(x,params['conv_net.C5.weight'],params['conv_net.C5.bias'])
+        # x = F.tanh(x)
         
         x = x.view(x.size(0), -1)
         return x # 返回的是卷积层提取的特征向量
@@ -60,6 +60,7 @@ class Representation(nn.Module):
     # 使用给定的参数进行前向传播，使用于元学习中的快速权重更新
     def functional_forward(self,x,params):
         
+        assert x.dim() == 4, f"Expected input x to have 4 dimensions, but got {x.dim()} dimensions"
         x = self.get_feature_params(x,params)
         
         x = F.linear(x,params['fully_connected.F6.weight'],params['fully_connected.F6.bias'])

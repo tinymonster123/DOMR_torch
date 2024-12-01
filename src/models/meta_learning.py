@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from main import logger
 import torch.nn.functional as F
 from models.representation import Representation,center_distance_loss
 
@@ -16,6 +17,7 @@ class MAML(nn.Module):
         self.inner_steps = inner_steps
         self.device = device
         self.outer_optimizer = optim.Adam(self.model.parameters(), lr=self.outer_lr) # 使用 Adam 优化器 学习率需按照论文中为 0.001
+        self.criterion = nn.CrossEntropyLoss() # 使用交叉熵损失函数
         
         def forward(self, x):
             return self.model(x.to(self.device))
@@ -28,6 +30,9 @@ class MAML(nn.Module):
             # 根据论文中将 loss weights 都设置为 1
             lambda1 = 1.0
             lambda2 = 1.0
+            
+            if support_set.dim() == 2:
+                support_set = support_set.view(-1,1,10,47)
             
             new_index = [i for i,label in enumerate(support_labels) if label not in known_classes] # 新类别的索引
             old_index = [i for i,label in enumerate(support_labels) if label in known_classes] # 旧类别的索引    
@@ -73,7 +78,7 @@ class MAML(nn.Module):
                 loss = lambda1 * loss_l1 + lambda2 * loss_l2 + loss_l3
                 
                 # 使用自动微分来进行梯度计算，用来进行快速权重更新
-                grads = torch.autograd.grad(loss, fast_weights.values(), create_graph=True, allow_unused=True)
+                grads = torch.autograd.grad(loss, fast_weights.values(), create_graph=False, allow_unused=True)
                 fast_weights = {name: param - self.inner_lr * grad if grad is not None else param
                             for (name, param), grad in zip(fast_weights.items(), grads)}
             return fast_weights
@@ -89,9 +94,19 @@ class MAML(nn.Module):
         total_loss = 0.0
         self.outer_optimizer.zero_grad()
         
+        if isinstance(known_classes, torch.Tensor):
+            known_classes = known_classes.tolist()
+        else:
+            known_classes = [kc.item() if isinstance(kc, torch.Tensor) else kc for kc in known_classes]
+        
         for episode in batch_episodes:
             support_set, query_set, support_labels, query_labels = episode
             fast_weights = self.inner_update(support_set,support_labels,known_classes)
+            
+            # 对 query_set 进行维度变换
+            if query_set.dim() == 2:
+                query_set = query_set.view(-1,1,10,47)
+                 
             
             # 外部优化器中需要计算已知类别和未知类别的损失
             query_set,query_labels = query_set.to(self.device),query_labels.to(self.device)
@@ -100,18 +115,22 @@ class MAML(nn.Module):
             output = self.model.functional_forward(query_set,fast_weights) # 使用的是为 log_softmax 输出
             output_odds = torch.exp(output) # log_softmax 输出转换为 softmax 输出
             
-            known_index = [i for i,label in enumerate(query_labels) if label in known_classes] # 已知类别的索引
-            unknown_index = [i for i,label in enumerate(query_labels) if label not in known_classes] # 未知类别的索引
+            # 使用 torch.isin 获取已知和未知类别索引
+            known_classes_tensor = torch.tensor(known_classes, device=self.device)
+            is_known = torch.isin(query_labels, known_classes_tensor)
+        
+            known_index = torch.nonzero(is_known, as_tuple=False).squeeze()
+            unknown_index = torch.nonzero(~is_known, as_tuple=False).squeeze()
             
-            if known_classes:
+            if known_classes.numel() > 0:
                 output_known = output[known_index]
                 query_labels_known = query_labels[known_index]
-                loss_lk = nn.CrossEntropyLoss(output_known, query_labels_known)
+                loss_lk = self.criterion(output_known, query_labels_known)
             else:
                 loss_lk = 0.0
                 
             # 此步骤是计算未知类别的输出在已知类别上的概率分布的熵，从而来帮助模型在未知概率上进行低概率的输出来增强模型拒绝未知类别的能力
-            if unknown_index:
+            if unknown_index.numel() > 0:
                 unknown_odds = output_odds[unknown_index]
                 # 
                 known_odds = unknown_odds[:,:len(known_classes)]
@@ -128,6 +147,8 @@ class MAML(nn.Module):
         loss_average.backward()
         self.outer_optimizer.step()
         
+        torch.cuda.empty_cache()
+        
         return loss_average.item()        
         
     # 定义元训练，使用外部更新函数进行多次迭代
@@ -138,5 +159,6 @@ class MAML(nn.Module):
 def train_maml_model(model,episodes,num_iterations,known_classes):
     for iteration in range(num_iterations):
         loss = model.meta_train(episodes,known_classes)
-        print(f'iteration: {iteration+1}/{num_iterations}, loss: {loss}')
+        logger.info(f'iteration: {iteration+1}/{num_iterations}, loss: {loss}')
+        torch.cuda.empty_cache()
         

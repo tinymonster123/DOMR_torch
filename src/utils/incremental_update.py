@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from main import logger
 import torch.nn.functional as F
 
 def incremental_update(classifier, feature_extractor, new_data_loader, old_data_loader, device, epochs=5):
@@ -53,4 +54,4 @@ def incremental_update(classifier, feature_extractor, new_data_loader, old_data_
             total_loss += loss.item()
 
         avg_loss = total_loss / len(new_data_loader)
-        print(f'Incremental Epoch: {epoch+1}/{epochs}, Loss: {avg_loss:.4f}')
+        logger.info(f'Incremental Epoch: {epoch+1}/{epochs}, Loss: {avg_loss:.4f}')

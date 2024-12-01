@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from main import logger
 
 class Classifier(nn.Module):
     def __init__(self, input_dim, num_classes):
@@ -45,4 +46,4 @@ def train_classifier(model, X_train, y_train, device, epochs):
         optimizer.zero_grad()
         total_loss.backward()
         optimizer.step()
-        print(f'Epoch: {epoch+1}/{epochs}, Loss: {total_loss.item():.4f}')
+        logger.info(f'Epoch: {epoch+1}/{epochs}, Loss: {total_loss.item():.4f}')

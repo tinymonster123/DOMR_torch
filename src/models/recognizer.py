@@ -22,7 +22,10 @@ def aggregation(test,representation_network,classifiers,device,num_classes):
         elif isinstance(test,torch.Tensor):
             test = test.to(device)
         else:
-            raise ValueError('Unsupported data type') 
+            raise ValueError('Unsupported data type')
+        
+        if test.dim() == 2:
+            test = test.view(-1,1,10,47)
         
         # 使用 representation 网络对 test 数据进行特征提取
         features = representation_network(test)
