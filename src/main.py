@@ -21,7 +21,7 @@ def main():
     file_name = 'cicmaldroid2020.csv'
 
     # 设置超参数
-    input_dim = 10
+    input_dim = 1200
     batch_size = 32
     inner_lr = 0.01
     outer_lr = 0.001
@@ -35,16 +35,16 @@ def main():
 
     train_loader, test_loader = create_dataloaders(X_train, y_train, X_test, y_test, batch_size=batch_size)
     
-    # 创建特征提取器
+    # 创建特征提取器(但是我将 C5 卷积层移除了)
     feature_extractor = Representation().to(device)
     
-    # 创建 Episodes
+    # 创建 Episodes(创建 100 个训练任务，每个任务中包含少量样本用于训练模型快速适应能力)
     episodes = create_episode(X_train, y_train, num_episode=100)
     
     # 初始化 MAML 模型
-    maml_model = MAML( inner_lr, outer_lr, inner_steps, device)
+    maml_model = MAML( inner_lr, outer_lr, inner_steps, device) # 按照论文
     train_maml_model(maml_model, episodes, num_iterations=meta_iterations,known_classes=known_classes)
-    torch.save(feature_extractor.state_dict(), '/root/DOMR_torch/experiment/logs/feature_extractor.pth')
+    torch.save(feature_extractor.state_dict(), '/root/DOMR_torch/experiment/logs/feature_extractor.pth') # 保存特征提取器的参数方便后续使用或恢复
 
     feature_extractor.load_state_dict(torch.load('/root/DOMR_torch/experiment/logs/feature_extractor.pth',weights_only=True))
     feature_extractor.eval()

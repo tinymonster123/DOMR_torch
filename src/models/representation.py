@@ -20,13 +20,13 @@ class Representation(nn.Module):
             ('Tanh3', nn.Tanh()),
             ('S4', nn.AvgPool2d(kernel_size=(2, 2), stride=2)),
             
-            # ('C5', nn.Conv2d(16, 120, kernel_size=(5, 5))),
-            # ('Tanh5', nn.Tanh()),
+            ('C5', nn.Conv2d(16, 120, kernel_size=(2, 2))),
+            ('Tanh5', nn.Tanh()),
         ]))
         
         # 定义全连接层
         self.fully_connected = nn.Sequential(OrderedDict([
-            ('F6', nn.Linear(352, 84)),
+            ('F6', nn.Linear(1200, 84)),
             ('Tanh6', nn.Tanh()),
             ('F7', nn.Linear(84, 10)),
             ('LogSoftmax', nn.LogSoftmax(dim=-1)) # 表示在最后一个维度进行 softmax
@@ -39,6 +39,14 @@ class Representation(nn.Module):
         x = self.fully_connected(x)
         return x # 返回的模型输出结果，是一个对数概率
     
+    def extract_features(self, x):
+        with torch.no_grad():
+            x = self.conv_net(x)
+            print(f"Extract_features - After conv_net: {x.shape}")  # 应为 [batch_size, 120, H, W]
+            x = x.view(x.size(0), -1)  # 展平为 [batch_size, 1200]
+            print(f"Extract_features - After flatten: {x.shape}")  # 应为 [batch_size, 1200]
+        return x  # 返回 [batch_size, 1200]
+    
     # 使用给定的参数进行前向传播，用于元学习中的快速权重更新
     def get_feature_params(self,x,params):
         
@@ -50,8 +58,8 @@ class Representation(nn.Module):
         x = F.tanh(x)
         x = F.avg_pool2d(x, kernel_size=(2, 2), stride=2)
         
-        # x = F.conv2d(x,params['conv_net.C5.weight'],params['conv_net.C5.bias'])
-        # x = F.tanh(x)
+        x = F.conv2d(x,params['conv_net.C5.weight'],params['conv_net.C5.bias'])
+        x = F.tanh(x)
         
         x = x.view(x.size(0), -1)
         return x # 返回的是卷积层提取的特征向量

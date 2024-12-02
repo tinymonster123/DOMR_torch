@@ -10,7 +10,11 @@ class Classifier(nn.Module):
         # 通过循环创建多个分类器，实现 one-vs-rest 分类器
         self.classifiers = nn.ModuleList([ # 包含多个二类分类器
             nn.Sequential(
-                nn.Linear(input_dim, 2), # 修改输出维度为 2 以适应 LogSoftmax 输入参数要求
+                nn.Linear(input_dim, 128), 
+                nn.ReLU(),
+                nn.Linear(128, 16),
+                nn.ReLU(),
+                nn.Linear(16, 2), # 修改输出维度为 2 以适应 LogSoftmax 输入参数要求
                 nn.LogSoftmax(dim=1)
             ) for _ in range(num_classes)
         ])
