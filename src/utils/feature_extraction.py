@@ -13,6 +13,8 @@ def extract_features(feature_extractor, data_loader, device):
             all_labels.append(labels.cpu())
     
     all_features = torch.cat(all_features, dim=0)
+    print(all_features.shape)
     all_labels = torch.cat(all_labels, dim=0)
+    print(all_labels.shape)
     
     return all_features, all_labels

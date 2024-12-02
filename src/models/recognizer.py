@@ -28,7 +28,7 @@ def aggregation(test,representation_network,classifiers,device,num_classes):
             test = test.view(-1,1,10,47)
         
         # 使用 representation 网络对 test 数据进行特征提取
-        features = representation_network(test)
+        features = representation_network.extract_features(test)
         
         outputs = classifiers(features) # 因为经过 classifier 处理后 outputs 的输出形状为 [batch_size,num_classes,2] 其中 2 代表分类器的输出维度
         outputs = torch.exp(outputs) # 将 LogSoftmax 处理的输出进行转换为 softmax

@@ -17,7 +17,7 @@ def incremental_update(classifier, feature_extractor, new_data_loader, old_data_
     for data, _ in old_data_loader:
         data = data.to(device)
         with torch.no_grad():
-            features = feature_extractor(data)
+            features = feature_extractor.extract_features(data)
             output = classifier(features)
             old_outputs.append(output.detach())
     old_outputs = torch.cat(old_outputs, dim=0)
