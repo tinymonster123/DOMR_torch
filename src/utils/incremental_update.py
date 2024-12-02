@@ -17,8 +17,7 @@ def incremental_update(classifier, feature_extractor, new_data_loader, old_data_
     for data, _ in old_data_loader:
         data = data.to(device)
         with torch.no_grad():
-            features = feature_extractor.extract_features(data)
-            output = classifier(features)
+            output = classifier(data)
             old_outputs.append(output.detach())
     old_outputs = torch.cat(old_outputs, dim=0)
 
@@ -31,21 +30,19 @@ def incremental_update(classifier, feature_extractor, new_data_loader, old_data_
             old_data = old_data.to(device)
 
             optimizer.zero_grad()
-
-            # 处理新数据
-            new_features = feature_extractor(new_data)
-            new_output = classifier(new_features)
-            # 获取新类别的标签索引（针对新分类器）
-            new_labels_indices = new_labels - (classifier.num_classes - len(classifier.classifiers))
+            
+            # 处理新数据(其中数据已经是处理好的)
+            new_output = classifier(new_data)
             # 计算新数据的损失
-            loss_new = criterion(new_output[:, -len(classifier.classifiers):, :].squeeze(2), new_labels_indices)
+            loss_new = criterion(new_output, new_labels)
 
             # 处理旧数据
-            old_features = feature_extractor(old_data)
-            old_output = classifier(old_features)
+            old_output = classifier(old_data)
             # 使用知识蒸馏损失（KL 散度）
-            loss_kd = nn.KLDivLoss(reduction='batchmean')(F.log_softmax(old_output, dim=2).view(old_output.size(0), -1),
-                                                           F.softmax(old_outputs[:old_output.size(0)], dim=2).view(old_output.size(0), -1))
+            loss_kd = nn.KLDivLoss(reduction='batchmean')(
+                F.log_softmax(old_output, dim=1),
+                F.softmax(old_outputs[:old_output.size(0)], dim=1)
+                )
 
             # 总损失
             loss = loss_new + loss_kd

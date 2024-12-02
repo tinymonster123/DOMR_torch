@@ -39,7 +39,7 @@ class Representation(nn.Module):
         x = self.fully_connected(x)
         return x # 返回的模型输出结果，是一个对数概率
     
-    def extract_features(self, x):
+    def extract_features(self, x): # 进行特征提取
         with torch.no_grad():
             x = self.conv_net(x)
             print(f"Extract_features - After conv_net: {x.shape}")  # 应为 [batch_size, 120, H, W]

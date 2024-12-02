@@ -8,7 +8,7 @@ def evaluate_model(preds,y_true):
     waf = f1_score(y_true, preds, average='weighted',zero_division=0)
         
     report = classification_report(y_true, preds, zero_division=0)
-    logger.info("Evaluation Report:\n", report)
+    logger.info("Evaluation Report:\n%s", report)
     logger.info(f"Macro F1 Score: {maf:.4f}")
     logger.info(f"Weighted F1 Score: {waf:.4f}")
         
